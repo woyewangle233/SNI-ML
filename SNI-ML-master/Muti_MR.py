@@ -1,23 +1,14 @@
 
-
-
 import copy
 from config.config import args
-import gensim
-from gensim.models.word2vec import LineSentence
-from gensim.models import Word2Vec
 import numpy as np
-import pickle
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 import heapq
 import os
-import math
 def getfile_story(dir,Filelist):
     if os.path.isfile(dir):
-        # if '.story' in dir:
         if True:
             Filelist.append(dir)
     elif os.path.isdir(dir):
@@ -59,18 +50,14 @@ def tf_idf_encoder(file_name):
     f = open(file_name, 'r', encoding='utf-8')
     sentences = f.readlines()
 
-    # 该类会将文本中的词语转换为词频矩阵，矩阵元素a[i][j] 表示j词在i类文本下的词频
     vectorizer = CountVectorizer(max_features=10000)
-    # 该类会统计每个词语的tf-idf权值
     tf_idf_transformer = TfidfTransformer()
-    # 将文本转为词频矩阵并计算tf-idf
     tf_idf = tf_idf_transformer.fit_transform(vectorizer.fit_transform(sentences))
-    # 将tf-idf矩阵抽取出来，元素a[i][j]表示j词在i类文本中的tf-idf权重
     sentences_array = tf_idf.toarray()
 
     return [],sentences_array
 
-def MMR(array,already_write):           #最大边际相关性
+def MMR(array,already_write):
     if already_write==[]:
         return True
     else:
@@ -147,7 +134,7 @@ def MR_S(array,docs):
     for i in range(len(array)):
         for j in range(i, len(array)):
             W_b[j, i] = W_b[i][j]
-    data=0.3*W_a+1*W_b               #  计算 W,  lamada_1,lamada_2 ∈ [0,1]
+    data=0.3*W_a+1*W_b               # calculate W,  lamada_1,lamada_2 ∈ [0,1]
 
     l = np.zeros(len(array))
     for k in range(len(l)):  # 求 S
@@ -173,7 +160,7 @@ def get_filed_word():
         a=[re.sub('\n','',w) for w in a]
         theme_words.append(a)
     return theme_words,titles
-def Doc(file_name):             #   将多文本整合成id集合
+def Doc(file_name):             #   Get multiple documents
     _,titles=get_filed_word()
     f=open(file_name,'r',encoding='utf-8')
     lines= f.readlines()
@@ -193,7 +180,7 @@ def Doc(file_name):             #   将多文本整合成id集合
             point=1
             pass
     return all_line
-def doc_same(docs,i,j):  #docs [[doc0],[doc1],[doc2]]    doc0=0,1,2 #判断句子i，j 是不是一个doc文本
+def doc_same(docs,i,j):  #docs [[doc0],[doc1],[doc2]]    doc0=0,1,2 #Determine whether the sentence i, j is a doc text
     for doc in docs:
         if i in doc:
             if j in doc:
@@ -211,7 +198,7 @@ def S_a(array,docs):
             W_a[j,i]=W_a[i][j]
 
     l = np.zeros(len(array))
-    for k in range(len(l)):  # 求 S
+    for k in range(len(l)):  #  S
         l[k] = np.sum(W_a[k][:])
         if l[k] != 0:
             l[k] = 1 / np.sqrt(l[k])
@@ -238,7 +225,7 @@ def S_b(array,docs):
 
     return S_b
 
-def Div_penalty(S,f):         # MMR算法 返回排序后的句子 id       超参 omiga
+def Div_penalty(S,f):         # MMR algorithm returns the sorted sentence id, Hyperparameter omiga
     id = []
     omiga = 8
     Rank_score = copy.deepcopy(f)
@@ -251,55 +238,52 @@ def Div_penalty(S,f):         # MMR算法 返回排序后的句子 id       超�
         rank_id = sorted(range(len(Rank_score)), key=lambda k: Rank_score[k], reverse=True)
         id.append(rank_id[m])
     return  Rank_score    #return id
-def Manifold_Rank(path):                        #基于主题与 句子内部关系 的摘要方法
+def Manifold_Rank(path):                        #Summary method based on the internal relationship between the topic and the sentence
     s, array = tf_idf_encoder(path)
     docs=Doc(path)
     S = MR_S(array,docs)
     # print(S)
     update = [np.zeros(len(S)), np.ones(len(S))]
-    alpha = 0.7                        #超参数   越小rank结果越靠近主题
-    # y = np.array([0 if i != 0 else 1 for i in range(len(S))]).T
-    y = np.array([1  for i in range(len(S))]).T           #无主题
+    alpha = 0.7                        #Hyperparameters, the smaller the rank result, the closer to the topic
+    y = np.array([1  for i in range(len(S))]).T
     f = y
     while (equal_(update[-1], update[-2]) is False):
         f = alpha * np.dot(S, f) + (1 - alpha) * y
-        update.append(copy.deepcopy(f))                   # f为每个句子的分数
+        update.append(copy.deepcopy(f))                   # f is the score of each sentence
     socre=Div_penalty(S,f)
     return socre
 
-def Muti_MR_li(file_name,):                 #Linear Fusion (Multi-Modality Learning)  返回显著性分数（numpy形式）
+def Muti_MR_li(file_name,):                 #Linear Fusion (Multi-Modality Learning) Returns the significance score (numpy format)
     s, array = tf_idf_encoder(file_name)
     l=len(array)
     docs=Doc(file_name)
     Sa=S_a(array,docs)
     Sb=S_b(array,docs)
-    mu=0.3            #超参数，μ，η
-    eta=0.3
+    mu = args.mu  # Hyperparameter，μ，η   lamada
+    eta = args.eta
     update = [np.zeros(l), np.ones(l)]
-    # y = np.array([0 if i != 0 else 1 for i in range(l)]).T
-    y = np.array([1  for i in range(l)]).T           #无主题
+    y = np.array([1  for i in range(l)]).T
     f = y
     while (equal_(update[-1], update[-2]) is False):
         f = mu * np.dot(Sa, f) +eta*np.dot(Sb, f)+ (1 - mu-eta) * y
         update.append(copy.deepcopy(f))
 
     socre=update[-1]
-    # socre=Div_penalty(Sa+Sb,f)       #
+    # socre=Div_penalty(Sa+Sb,f)
 
     return socre
 
-def Muti_MR_com(file_name,):                        #Score Combination (Multi-Modality Learning)返回显著性分数（numpy形式）
+def Muti_MR_com(file_name,):                        #Score Combination (Multi-Modality Learning) Returns the significance score (numpy format)
     s, array = tf_idf_encoder(file_name)
     l=len(array)
     docs=Doc(file_name)
     Sa=S_a(array,docs)
     Sb=S_b(array,docs)
-    mu=args.mu          #超参数，μ，η   lamada
-    eta=args.eta         #lamada=1这个参数无用
+    mu=args.mu          #Hyperparameter，μ，η   lamada
+    eta=args.eta
     lam=args.lam
     update = [np.zeros(l), np.ones(l)]
-    # y = np.array([0 if i != 0 else 1 for i in range(l)]).T
-    y = np.array([1  for i in range(l)]).T           #无主题
+    y = np.array([1  for i in range(l)]).T
     f1 = y
     f2=copy.deepcopy(y)
     while (equal_(update[-1], update[-2]) is False):
@@ -311,11 +295,10 @@ def Muti_MR_com(file_name,):                        #Score Combination (Multi-Mo
         update.append(copy.deepcopy(f2))
     f=lam*f1+(1-lam)*f2
     socre=f
-    # socre = Div_penalty(Sa + Sb, f)  #
     return socre,array
 
 
-def write2sum(file_name,write_path,F,lamada):      # file_name, 要摘要的story文件 write_path写入路径  F 调用的函数名
+def write2sum(file_name,write_path,F,lamada):      # file_name, the story file to be summarized write_path write path F name of the function called
     f=open(file_name,'r',encoding='utf-8')
     lines=f.readlines()
     max=copy.deepcopy(int(len(lines)*0.2))
@@ -326,20 +309,15 @@ def write2sum(file_name,write_path,F,lamada):      # file_name, 要摘要的stor
 
     if not os.path.exists(write_path+name+'.txt'):
         s,array = F(file_name)
-        s=list(s)               # 无社交网络信息
+        s=list(s)               # No social network information
 
         s = splus(s, file_name,lamada)
         a = map(s.index, heapq.nlargest(len(s), s))
         f2 = open(write_path + name + '.txt', 'w', encoding='utf-8')
         num = 0
-        already_write = []
         for i in a:
             f2.write(lines[i])
             num += 1
-            # if MMR(array[i],already_write):
-            #     f2.write(lines[i])
-            #     already_write.append(array[i])
-            #     num+=1
             if num == max:
                 break
         f2.close()

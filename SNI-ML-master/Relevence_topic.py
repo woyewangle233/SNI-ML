@@ -1,7 +1,4 @@
-
-
 import re
-from sumeval.metrics.rouge import RougeCalculator
 import os
 import numpy as np
 from config.config import args

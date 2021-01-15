@@ -22,7 +22,6 @@ def find(summary_files,references_files):
         id = re.sub('\.story', '', id)
         id = re.sub('\.sum', '', id)
 
-        # print(id)
         for f2 in references_files:
             id2 = re.sub('.*\\\\', '', f2)
             id2 = re.sub('\.txt', '', id2)

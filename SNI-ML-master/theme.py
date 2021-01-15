@@ -1,4 +1,3 @@
-import math
 import numpy as np
 import gensim
 import re
@@ -99,7 +98,7 @@ def __func_preprocess(string):   #  句子string的前处理
     for word,tag in tokens_c_pos:
         if  'NN' or 'JJ' or 'VB' in tag:
             word_list.append(word)
-    return word_list                # 返回以列表形式表示的句子（保留：只保留名词动词形容词）
+    return word_list                # Return sentences in list form (reserved: only nouns, verbs, adjectives)
 def getfile_story(dir,Filelist):
     if os.path.isfile(dir):
         Filelist.append(dir)
@@ -108,8 +107,8 @@ def getfile_story(dir,Filelist):
             newDir = os.path.join(dir, s)
             getfile_story(newDir,Filelist)
     return Filelist
-def sentence_2_theme_similarity(line,theme_index):       # 计算句子到 主题的相似度
-    sentence=set(__func_preprocess(line))           #set 减少重复
+def sentence_2_theme_similarity(line,theme_index):       # Calculate the similarity of the sentence to the topic
+    sentence=set(__func_preprocess(line))           #set to reduce duplication
     length=10
     if len(sentence)==0:
         return 0
@@ -126,7 +125,7 @@ def sentence_2_theme_similarity(line,theme_index):       # 计算句子到 主�
         similar_arr.append(word2theme)
     arr=np.mean(similar_arr)
     return arr
-def MMR(sentence,summary):            #最大边际相关——保证多样性
+def MMR(sentence,summary):            #Maximum marginal correlation-ensuring diversity
     sent=__func_preprocess(sentence)
     for s in summary:
         s=(__func_preprocess(s))
@@ -157,7 +156,7 @@ def theme_score(file):
                 word_lenth += len(line.split())
 
             for line in story:
-                a = sentence_2_theme_similarity(line, theme_index)  # 相似度计算
+                a = sentence_2_theme_similarity(line, theme_index)  # Similarity calculation
                 score.append(a)
                 sum.append(line)
             max = int(len(sum) * 0.2)
@@ -180,14 +179,14 @@ def theme_score(file):
 
         return str_score
 
-def Generate_theme_score(files,write_path):                # 通过和主题的 相似度计算silience score    #应用MMR后形成摘要
+def Generate_theme_score(files,write_path):                # Calculate the silience score by the similarity with the topic #Apply MMR to form a summary
     countnum =0
     for filename in files:
         if countnum % 10 == 0:
             print(countnum,'\t',filename)
             print()
         countnum += 1
-        if countnum<0:           #已经跑完的不用再跑
+        if countnum<0:           #You don’t have to run after you finish
             continue
         with open(filename, 'r', encoding='utf-8') as f:
             all_line=[[] for i in range(len(titles))]
@@ -196,16 +195,11 @@ def Generate_theme_score(files,write_path):                # 通过和主题的 
                     if titles[k] in line:
                         all_line[k].append(line)
                         break
-        path =write_path                          # 候选摘要保存路径
+        path =write_path                          # Candidate abstract save path
         name = re.sub('.*\\\\', '', filename)
         name = re.sub('\.story', '', name)
         fname =path + name + '.npy'
         theme_index=-1
-        social_s=social_score(filename)
-        # print(social_s)
-        alpha=0.7          #
-        beta=0.2
-        count=0
 
         str_score=[]
         for story in all_line:
@@ -219,7 +213,7 @@ def Generate_theme_score(files,write_path):                # 通过和主题的 
             i=0
 
             for line in story:
-                a = sentence_2_theme_similarity(line,theme_index)   #    相似度计算
+                a = sentence_2_theme_similarity(line,theme_index)   # Similarity calculation
                 i=i+1
                 score.append(a)
                 sum.append(line)
